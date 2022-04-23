@@ -33,12 +33,15 @@ print('JOB PID:', job_pids)
 print('UNREGISTERD PID:', unregistered_pids)
 
 for pid in unregistered_pids:
-    process_info = subprocess.run(['ps', '-o', 'pid,user:15,cmd', '-p', str(pid), '--no-headers'],
-                                  stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
-    app_log.info(process_info)
-    _pid, user, command = [item.strip() for item in re.sub(r'\s+', ' ', process_info).split(maxsplit=2)]
-    requests.post(
-        'http://10.10.1.210/api/v1/server/killed',
-        json={'server': server, 'pid': _pid, 'user': user, 'command': command},
-        timeout=5)
-    subprocess.run(['kill', '-9', str(pid)])
+    try:
+        process_info = subprocess.run(['ps', '-o', 'pid,user:15,cmd', '-p', str(pid), '--no-headers'],
+                                      stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
+        app_log.info(process_info)
+        _pid, user, command = [item.strip() for item in re.sub(r'\s+', ' ', process_info).split(maxsplit=2)]
+        requests.post(
+            'http://10.10.1.210/api/v1/server/killed',
+            json={'server': server, 'pid': _pid, 'user': user, 'command': command},
+            timeout=5)
+        subprocess.run(['kill', str(pid)])
+    except:
+        pass
