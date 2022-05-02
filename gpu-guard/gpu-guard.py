@@ -7,6 +7,8 @@ import subprocess
 
 from logging.handlers import RotatingFileHandler
 
+WHITELIST = {'lidongwen'}
+
 pids = subprocess.run(['nvidia-smi', '--query-compute-apps=pid', '--format=csv,noheader'],
                       stdout=subprocess.PIPE).stdout.decode('utf-8')
 pids = [int(pid) for pid in pids.strip().split()]
@@ -38,10 +40,11 @@ for pid in unregistered_pids:
                                       stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
         app_log.info(process_info)
         _pid, user, command = [item.strip() for item in re.sub(r'\s+', ' ', process_info).split(maxsplit=2)]
-        requests.post(
-            'http://10.10.1.210/api/v1/server/killed',
-            json={'server': server, 'pid': _pid, 'user': user, 'command': command},
-            timeout=5)
-        subprocess.run(['kill', str(pid)])
+        if user not in WHITELIST:
+            requests.post(
+                'http://10.10.1.210/api/v1/server/killed',
+                json={'server': server, 'pid': _pid, 'user': user, 'command': command},
+                timeout=5)
+            subprocess.run(['kill', str(pid)])
     except:
         pass
