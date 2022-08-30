@@ -7,6 +7,6 @@ SERVERS="10.10.1.208 10.10.1.209 10.10.1.210 10.10.2.211 10.10.2.212 10.10.1.213
 
 for server in $SERVERS; do
   echo Pushing to server "$server"
-  scp "$LOCAL" server-maintainer@"$server":~/payload
+  scp -r "$LOCAL" server-maintainer@"$server":~/payload
   echo "$PASSWORD" | ssh -tt server-maintainer@"$server" "sudo mv ~/payload $REMOTE"
 done
