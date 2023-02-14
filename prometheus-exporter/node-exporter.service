@@ -3,8 +3,8 @@ Description=Node Exporter
 After=network.target
 
 [Service]
-User=server-maintainer
-Group=server-maintainer
+User=server-admin
+Group=server-admin
 Type=simple
 ExecStart=/usr/local/bin/node-exporter
 
