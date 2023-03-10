@@ -26,32 +26,22 @@ def get_addr(args: argparse.Namespace) -> str:
     addr = s.getsockname()[0]
     s.close()
     args.address = addr
-    print(f'Address: {addr}')
     return addr
 
 
 def login(args: argparse.Namespace):
-    if args.address is None:
-        args.address = get_addr(args)
-    url = f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=202.113.18.106&port=&iTermType=1&wlanuserip={args.address}&wlanacip=null&wlanacname=zx_&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip={args.address}&enAdvert=0&jsVersion=2.4.3&DDDDD={args.user}&upass={args.password}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login='
-    headers = {
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'Referer': f'http://202.113.18.106/a70.htm?wlanuserip={args.address}&wlanacip=null&wlanacname=zx_&vlanid=0&ip={args.address}&ssid=null&areaID=null&mac=00-00-00-00-00-00&switch_url=null&ap_mac=null&client_mac=null&wlan=null',
-        'Accept-Language': 'zh-CN,zh;q=0.9'
-    }
-    requests.get(url, headers=headers, verify=False)
+    print('Logging in...')
+    url = f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=202.113.18.106&port=&iTermType=1&wlanuserip=&wlanacip=null&wlanacname=zx_&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip=&enAdvert=0&jsVersion=2.4.3&DDDDD={args.user}&upass={args.password}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login='
+    requests.get(url, verify=False)
+    time.sleep(3)
     connectivity_check(success=lambda: print('Login successful'), error=lambda: print('Login failed'))
 
 
 def logout(_):
-    if args.address is None:
-        args.address = 'null'
-    url = f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Logout&loginMethod=1&runRadius=1&DDDDD=&protocol=http%3A&hostname=202.113.18.106&port=&iTermType=1&wlanuserip={args.address}&wlanacip=null&wlanacname=null&redirect=null&session=null&vlanid=undefined&mac=00-00-00-00-00-00&ip=&queryACIP=0&jsVersion=2.4.3'
+    print('Logging out...')
+    url = f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Logout&loginMethod=1&runRadius=1&DDDDD=&protocol=http%3A&hostname=202.113.18.106&port=&iTermType=1&wlanuserip=&wlanacip=null&wlanacname=null&redirect=null&session=null&vlanid=undefined&mac=00-00-00-00-00-00&ip=&queryACIP=0&jsVersion=2.4.3'
     requests.get(url, verify=False)
-    time.sleep(1)
+    time.sleep(3)
     connectivity_check(success=lambda: print('Logout failed'), error=lambda: print('Logout successful'))
 
 
@@ -103,37 +93,25 @@ def status(args: argparse.Namespace):
 
 if __name__ == '__main__':
     colorama.init()
-    parser = argparse.ArgumentParser(description='A script to login/logout to/from the campus network.')
+    parser = argparse.ArgumentParser(description='a script to login/logout to/from the campus network')
     parser.set_defaults(func=lambda _: parser.print_help())
     subparsers = parser.add_subparsers(dest='command')
 
-    login_parser = subparsers.add_parser('login', help='Login to the campus network.')
-    login_parser.add_argument(
-        '-a', '--address',
-        required=False,
-        type=str,
-        help='IP address of the device. Should only be specified when the automatic address detection fails.',
-    )
-    login_parser.add_argument('-u', '--user', required=True, type=str, help='Username of your campus network account.')
+    login_parser = subparsers.add_parser('login', help='login to the campus network')
+    login_parser.add_argument('-u', '--user', required=True, type=str, help='username of your campus network account')
     login_parser.add_argument('-p', '--password', required=True, type=str,
-                              help='Password of your campus network account.')
+                              help='password of your campus network account')
     login_parser.set_defaults(func=login)
 
-    logout_parser = subparsers.add_parser('logout', help='Logout from the campus network.')
-    logout_parser.add_argument(
-        '-a', '--address',
-        required=False,
-        type=str,
-        help='IP address of the device. Should only be specified when the automatic address detection fails.',
-    )
+    logout_parser = subparsers.add_parser('logout', help='logout from the campus network')
     logout_parser.set_defaults(func=logout)
 
-    status_parser = subparsers.add_parser('status', help='Check the status of the campus network.')
+    status_parser = subparsers.add_parser('status', help='check the status of the campus network')
     status_parser.add_argument(
         '-a', '--address',
         required=False,
         type=str,
-        help='IP address of the device. Should only be specified when the automatic address detection fails.',
+        help='IP address of the device that should only be specified when the automatic address detection fails',
     )
     status_parser.set_defaults(func=status)
 
