@@ -31,16 +31,20 @@ def get_addr(args: argparse.Namespace) -> str:
 
 def login(args: argparse.Namespace):
     print('Logging in...')
-    url = f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&loginMethod=1&protocol=http%3A&hostname=202.113.18.106&port=&iTermType=1&wlanuserip=&wlanacip=null&wlanacname=zx_&redirect=null&session=null&vlanid=0&mac=00-00-00-00-00-00&ip=&enAdvert=0&jsVersion=2.4.3&DDDDD={args.user}&upass={args.password}&R1=0&R2=0&R3=0&R6=0&para=00&0MKKey=123456&buttonClicked=&redirect_url=&err_flag=&username=&password=&user=&cmd=&Login='
-    requests.get(url, verify=False)
+    requests.get(
+        f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&DDDDD={args.user}&upass={args.password}',
+        verify=False,
+    )
     time.sleep(3)
     connectivity_check(success=lambda: print('Login successful'), error=lambda: print('Login failed'))
 
 
 def logout(_):
     print('Logging out...')
-    url = f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Logout&loginMethod=1&runRadius=1&DDDDD=&protocol=http%3A&hostname=202.113.18.106&port=&iTermType=1&wlanuserip=&wlanacip=null&wlanacname=null&redirect=null&session=null&vlanid=undefined&mac=00-00-00-00-00-00&ip=&queryACIP=0&jsVersion=2.4.3'
-    requests.get(url, verify=False)
+    requests.get(
+        f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Logout',
+        verify=False,
+    )
     time.sleep(3)
     connectivity_check(success=lambda: print('Logout failed'), error=lambda: print('Logout successful'))
 
