@@ -2,7 +2,9 @@
 
 import json
 import time
+import yaml
 import socket
+import pathlib
 import argparse
 import colorama
 import requests
@@ -31,12 +33,28 @@ def get_addr(args: argparse.Namespace) -> str:
 
 def login(args: argparse.Namespace):
     print('Logging in...')
+    if bool(args.username) != bool(args.password):
+        raise ValueError('Username and password must be both specified or both omitted.')
+    if args.config is not None:
+        config_path = pathlib.Path(args.config)
+    else:
+        config_path = pathlib.Path.home() / '.config' / 'nknet' / 'config.yaml'
+    if args.username is None:
+        if not config_path.exists():
+            raise FileNotFoundError(f'Config file not found: {config_path}. '
+                                    f'Please specify username and password using --username and --password.')
+        config = yaml.safe_load(config_path.read_text())
+        args.username = config['username']
+        args.password = config['password']
     requests.get(
-        f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&DDDDD={args.user}&upass={args.password}',
+        f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&DDDDD={args.username}&upass={args.password}',
         verify=False,
     )
     time.sleep(3)
     connectivity_check(success=lambda: print('Login successful'), error=lambda: print('Login failed'))
+    if not args.no_save:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(yaml.dump({'username': args.username, 'password': args.password}))
 
 
 def logout(_):
@@ -102,9 +120,14 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(dest='command')
 
     login_parser = subparsers.add_parser('login', help='login to the campus network')
-    login_parser.add_argument('-u', '--user', required=True, type=str, help='username of your campus network account')
-    login_parser.add_argument('-p', '--password', required=True, type=str,
+    login_parser.add_argument('-u', '--username', required=False, type=str,
+                              help='username of your campus network account')
+    login_parser.add_argument('-p', '--password', required=False, type=str,
                               help='password of your campus network account')
+    login_parser.add_argument('-c', '--config', required=False, type=str,
+                              help='path to the config file')
+    login_parser.add_argument('-n', '--no-save', required=False, action='store_true',
+                              help='do not save the username and password to the config file')
     login_parser.set_defaults(func=login)
 
     logout_parser = subparsers.add_parser('logout', help='logout from the campus network')
