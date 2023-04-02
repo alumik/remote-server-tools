@@ -42,7 +42,10 @@ def login(args: argparse.Namespace):
     if args.username is None:
         if not config_path.exists():
             raise FileNotFoundError(f'Config file not found: {config_path}. '
-                                    f'Please specify username and password using --username and --password.')
+                                    f'If this is the first time you use this program, '
+                                    f'please specify your username and password using `--username` and `--password`. '
+                                    f'Otherwise, please specify the path to a valid config file using `--config`. '
+                                    f'For more information, please run `nknet login --help`.')
         config = yaml.safe_load(config_path.read_text())
         args.username = config['username']
         args.password = config['password']
