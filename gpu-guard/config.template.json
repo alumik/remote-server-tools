@@ -1,0 +1,11 @@
+{
+  "whitelist": {
+    "users": [],
+    "cmd": []
+  },
+  "urls": {
+    "pid_query": "http://127.0.0.1/api/v1/job/gpu?server={server}",
+    "register_kill": "http://127.0.0.1/api/v1/server/killed"
+  },
+  "log": "gpu-guard.log"
+}

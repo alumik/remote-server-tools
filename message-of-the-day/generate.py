@@ -1,8 +1,17 @@
 import fire
+import json
 import urwid
 import colorama
 
 from typing import *
+
+COLORS = {
+    'black': colorama.Fore.BLACK,
+    'red': colorama.Fore.RED,
+    'green': colorama.Fore.GREEN,
+    'yellow': colorama.Fore.YELLOW,
+    'blue': colorama.Fore.BLUE,
+}
 
 
 def char_len(char: str) -> int:
@@ -86,22 +95,18 @@ class MotDGenerator:
         return output
 
 
-def main(max_len: int = 60):
-    generator = MotDGenerator(max_len)
-    generator.add_cell(Cell('大家好！为了提高服务器计算资源的流转效率，更好的为大家的科研工作服务，现提供《南开大学软件学院服务器作业管理平台》'
-                            '进一步规范服务器的管理和使用。平台地址为：\n┌───────────────────────┐\n│  http://10.10.1.210/  │\n└'
-                            '───────────────────────┘\n该平台主要提供服务器状态查询和作业登记管理功能。请各位用户在服务器上执行任务前先'
-                            '在该平台进行作业信息登记。'))
-    generator.add_cell(Cell('请注意：未在该平台登记的服务器作业可能被清理（SIGTERM）。',
-                            color=colorama.Fore.YELLOW))
-    generator.add_cell(Cell('请务必准确填写和及时更新 PID。\n该平台每隔30分钟会清理一次未登记或过期的 GPU 进程。',
-                            color=colorama.Fore.RED))
+def main(config: str = 'server-hub.json'):
+    with open(config, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+    generator = MotDGenerator(config.get('max_length', 60))
+    for cell_config in config['cells']:
+        generator.add_cell(Cell(cell_config['text'], COLORS.get(cell_config.get('color'))))
     motd_string = generator.render()
     print(motd_string)
-    with open('motd', 'w') as motd:
+    with open('motd', 'w', encoding='utf-8') as motd:
         motd.write(motd_string)
 
 
 if __name__ == '__main__':
-    colorama.init()
+    colorama.just_fix_windows_console()
     fire.Fire(main)
