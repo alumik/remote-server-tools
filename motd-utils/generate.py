@@ -3,8 +3,6 @@ import json
 import urwid
 import colorama
 
-from typing import *
-
 COLORS = {
     'black': colorama.Fore.BLACK,
     'red': colorama.Fore.RED,
@@ -37,7 +35,7 @@ def fixed_len_splitter(text: str, max_len: int) -> str:
 
 class Line:
 
-    def __init__(self, text: str, color: Optional[str] = None):
+    def __init__(self, text: str, color: str | None = None):
         self.text = text
         self.color = color
 
@@ -50,7 +48,7 @@ class Line:
 
 class Cell:
 
-    def __init__(self, text: str, color: Optional[str] = None):
+    def __init__(self, text: str, color: str | None = None):
         self.text = text
         self.color = color
         self.lines = None
@@ -108,5 +106,5 @@ def main(config: str = 'server-hub.json'):
 
 
 if __name__ == '__main__':
-    colorama.just_fix_windows_console()
+    colorama.init()
     fire.Fire(main)

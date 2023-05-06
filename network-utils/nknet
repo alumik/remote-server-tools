@@ -9,10 +9,8 @@ import argparse
 import colorama
 import requests
 
-from typing import *
 
-
-def connectivity_check(success: Optional[Callable] = None, error: Optional[Callable] = None, timeout: int = 1):
+def connectivity_check(success: Callable | None = None, error: Callable | None = None, timeout: int = 1):
     try:
         requests.head('https://www.baidu.com/', timeout=timeout)
         if success is not None:
