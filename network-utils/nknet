@@ -8,13 +8,14 @@ import pathlib
 import argparse
 import colorama
 import requests
+import urllib.parse
 
 from typing import Callable
 
 
 def connectivity_check(
-        success: Callable[[None], None] | None = None,
-        error: Callable[[None], None] | None = None,
+        success: Callable[[], None] | None = None,
+        error: Callable[[], None] | None = None,
         timeout: int = 1,
 ):
     try:
@@ -54,7 +55,8 @@ def login(args: argparse.Namespace):
         args.username = config['username']
         args.password = config['password']
     requests.get(
-        f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&DDDDD={args.username}&upass={args.password}',
+        f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&DDDDD={urllib.parse.quote(args.username)}'
+        f'&upass={urllib.parse.quote(args.password)}',
         verify=False,
     )
     time.sleep(3)
@@ -80,7 +82,7 @@ def status(args: argparse.Namespace):
         if args.address is None:
             args.address = get_addr(args)
         response = requests.get(
-            f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadAccount&ip={args.address}',
+            f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadAccount&ip={urllib.parse.quote(args.address)}',
             verify=False,
         )
         response.encoding = response.apparent_encoding
@@ -90,7 +92,7 @@ def status(args: argparse.Namespace):
             return
         username = response['list'][0]['account']
         response = requests.get(
-            f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadUserFlow&account={username}',
+            f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadUserFlow&account={urllib.parse.quote(username)}',
             verify=False,
         )
         response.encoding = response.apparent_encoding
@@ -100,7 +102,8 @@ def status(args: argparse.Namespace):
             print(f'Invalid address: {args.address}')
             return
         response = requests.get(
-            f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadOnlineDevice&account={username}',
+            f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadOnlineDevice'
+            f'&account={urllib.parse.quote(username)}',
             verify=False,
         )
         response.encoding = response.apparent_encoding
@@ -124,7 +127,7 @@ if __name__ == '__main__':
     colorama.init()
     parser = argparse.ArgumentParser(description='a script to login/logout to/from the campus network')
     parser.set_defaults(func=lambda _: parser.print_help())
-    parser.add_argument('-v', '--version', action='version', version='1.1.0')
+    parser.add_argument('-v', '--version', action='version', version='1.2.0')
     subparsers = parser.add_subparsers(dest='command')
 
     login_parser = subparsers.add_parser('login', help='login to the campus network')
