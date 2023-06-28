@@ -22,7 +22,7 @@ def connectivity_check(
         requests.head('https://www.baidu.com/', timeout=timeout)
         if success is not None:
             success()
-    except requests.exceptions.ReadTimeout:
+    except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
         if error is not None:
             error()
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     colorama.init()
     parser = argparse.ArgumentParser(description='a script to login/logout to/from the campus network')
     parser.set_defaults(func=lambda _: parser.print_help())
-    parser.add_argument('-v', '--version', action='version', version='1.2.0')
+    parser.add_argument('-v', '--version', action='version', version='1.2.1')
     subparsers = parser.add_subparsers(dest='command')
 
     login_parser = subparsers.add_parser('login', help='login to the campus network')
