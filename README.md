@@ -1,6 +1,6 @@
 # Remote Server Tools
 
-![version-1.1.0](https://img.shields.io/badge/version-1.1.0-blue)
+![version-1.2.0](https://img.shields.io/badge/version-1.2.0-blue)
 ![python->=3.10](https://img.shields.io/badge/python->=3.10-blue?logo=python&logoColor=white)
 [![license-MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/alumik/remote-server-tools/blob/main/LICENSE)
 
@@ -8,6 +8,7 @@ This is a collection of tools for managing remote servers.
 
 ## Tools
 
+- `account-utils`: Manage user accounts on remote servers.
 - `file-utils`: Push and remove files from remote servers.
 - `gpu-guard`: Guard GPU resources on remote servers by periodically monitoring GPU usage and terminating processes that have not registered themselves.
 - `motd-utils`: Generate a dynamic message of the day (MOTD) for remote servers.
