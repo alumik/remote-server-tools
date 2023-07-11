@@ -1,7 +1,6 @@
 {
   "whitelist": {
-    "users": [],
-    "cmd": []
+    "users": []
   },
   "urls": {
     "pid_query": "http://127.0.0.1/api/v1/job/gpu?server={server}",

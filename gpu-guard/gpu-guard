@@ -1,0 +1,173 @@
+#!/usr/bin/python3
+
+import re
+import json
+import socket
+import logging
+import pathlib
+import argparse
+import colorama
+import requests
+import subprocess
+
+from typing import Any
+from logging.handlers import RotatingFileHandler
+
+
+def get_addr() -> str:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("202.113.18.106", 80))
+    addr = s.getsockname()[0]
+    s.close()
+    print(f'detected IP address: {addr}')
+    return addr
+
+
+def load_config(args: argparse.Namespace) -> dict[str, Any]:
+    if args.config is not None:
+        config_path = pathlib.Path(args.config)
+    else:
+        config_path = pathlib.Path(__file__).resolve().parent / 'config.json'
+    if not config_path.exists():
+        raise FileNotFoundError(f'Config file not found: {config_path}. '
+                                f'Please specify the path to a valid config file using `--config`. '
+                                f'For more information, please run `gpu-guard --help`.')
+    return json.loads(config_path.read_text())
+
+
+def get_pids() -> set[int]:
+    pids = subprocess.run(
+        ['nvidia-smi', '--query-compute-apps=pid', '--format=csv,noheader'],
+        stdout=subprocess.PIPE,
+    ).stdout.decode('utf-8')
+    pids = [int(pid) for pid in pids.strip().split()]
+    return set(pids)
+
+
+def get_registered_pids(config: dict[str, Any], server: str) -> set[int]:
+    registered_pids = requests.get(config['urls']['pid_query'].replace('{server}', server), timeout=5)
+    registered_pids.raise_for_status()
+    return set(json.loads(registered_pids.content))
+
+
+def get_unregistered_pids(pids: set[int], registered_pids: set[int]) -> set[int]:
+    return pids - registered_pids
+
+
+def list_gpu_processes(args: argparse.Namespace):
+    config = load_config(args)
+    if args.server is None:
+        args.server = get_addr()
+
+    pids = get_pids()
+    registered_pids = get_registered_pids(config, args.server)
+    unregistered_pids = get_unregistered_pids(pids, registered_pids)
+
+    if not args.unregistered:
+        print('registered GPU processes:')
+        for pid in registered_pids:
+            print(f'  {pid}')
+    if not args.registered:
+        print('unregistered GPU processes:')
+        for pid in unregistered_pids:
+            print(f'  {pid}')
+
+
+def clean_gpu_processes(args: argparse.Namespace):
+    config = load_config(args)
+    if args.server is None:
+        args.server = get_addr()
+
+    pathlib.Path(config['log']).parent.mkdir(parents=True, exist_ok=True)
+    log_formatter = logging.Formatter('[%(asctime)s] %(message)s')
+    my_handler = RotatingFileHandler(
+        config['log'],
+        mode='a',
+        maxBytes=100 * 1024 * 1024,
+        backupCount=2,
+        encoding=None,
+        delay=False,
+    )
+    my_handler.setFormatter(log_formatter)
+    my_handler.setLevel(logging.INFO)
+    app_log = logging.getLogger('root')
+    app_log.setLevel(logging.INFO)
+    app_log.addHandler(my_handler)
+
+    if args.routine:
+        app_log.info('GPU process checking routinely started.')
+    else:
+        app_log.info('GPU process checking manually started.')
+
+    pids = get_pids()
+    registered_pids = get_registered_pids(config, args.server)
+    unregistered_pids = get_unregistered_pids(pids, registered_pids)
+    print('registered GPU processes:')
+    for pid in registered_pids:
+        print(f'  {pid}')
+    app_log.info(f'registered GPU processes: {registered_pids or "{}"}')
+    print('unregistered GPU processes:')
+    for pid in unregistered_pids:
+        print(f'  {pid}')
+    app_log.info(f'unregistered GPU processes: {unregistered_pids or "{}"}')
+
+    for pid in unregistered_pids:
+        try:
+            process_info = subprocess.run(
+                ['ps', '-o', 'pid,user:15,cmd', '-p', str(pid), '--no-headers'],
+                stdout=subprocess.PIPE,
+            ).stdout.decode('utf-8').strip()
+            print(f'detected: {process_info}')
+            app_log.info(f'detected: {process_info}')
+            _pid, user, command = [item.strip() for item in re.sub(r'\s+', ' ', process_info).split(maxsplit=2)]
+            if user not in config['whitelist']['users']:
+                requests.post(
+                    config['urls']['register_kill'],
+                    json={'server': args.server, 'pid': _pid, 'user': user, 'command': command},
+                    timeout=5,
+                )
+                subprocess.run(['kill', str(pid)])
+                print(f'terminated: {pid}')
+                app_log.info(f'terminated: {pid}')
+            else:
+                app_log.info(f'whitelisted: {pid}')
+        except Exception as e:
+            print(f'failed to terminate: {pid}')
+            app_log.exception(f'failed to terminate: {pid}', exc_info=e)
+            pass
+
+
+if __name__ == '__main__':
+    colorama.init()
+    parser = argparse.ArgumentParser(description='a script to check and clean unregistered GPU processes')
+    parser.set_defaults(func=lambda _: parser.print_help())
+    parser.add_argument('-v', '--version', action='version', version='1.0.0')
+    subparsers = parser.add_subparsers(dest='command')
+
+    list_parser = subparsers.add_parser('list', help='list GPU processes')
+    list_parser.add_argument('-r', '--registered', required=False, action='store_true',
+                             help='list registered processes')
+    list_parser.add_argument('-u', '--unregistered', required=False, action='store_true',
+                             help='list unregistered processes')
+    list_parser.add_argument('-c', '--config', required=False, type=str, help='path to the config file')
+    list_parser.add_argument(
+        '-s', '--server',
+        required=False,
+        type=str,
+        help='IP address of the server that should only be specified when the automatic address detection fails',
+    )
+    list_parser.set_defaults(func=list_gpu_processes)
+
+    clean_parser = subparsers.add_parser('clean', help='clean unregistered GPU processes')
+    clean_parser.add_argument(
+        '-s', '--server',
+        required=False,
+        type=str,
+        help='IP address of the server that should only be specified when the automatic address detection fails',
+    )
+    clean_parser.add_argument('-c', '--config', required=False, type=str, help='path to the config file')
+    clean_parser.add_argument('--routine', required=False, action='store_true', help='run in routine mode')
+    clean_parser.set_defaults(func=clean_gpu_processes)
+
+    args = parser.parse_args()
+    args.func(args)
