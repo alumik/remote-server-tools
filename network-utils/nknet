@@ -2,7 +2,6 @@
 
 import json
 import time
-import yaml
 import socket
 import pathlib
 import argparse
@@ -43,7 +42,7 @@ def login(args: argparse.Namespace):
     if args.config is not None:
         config_path = pathlib.Path(args.config)
     else:
-        config_path = pathlib.Path.home() / '.config' / 'nknet' / 'config.yaml'
+        config_path = pathlib.Path.home() / '.config' / 'nknet' / 'config.json'
     if args.username is None:
         if not config_path.exists():
             raise FileNotFoundError(f'Config file not found: {config_path}. '
@@ -51,7 +50,7 @@ def login(args: argparse.Namespace):
                                     f'please specify your username and password using `--username` and `--password`. '
                                     f'Otherwise, please specify the path to a valid config file using `--config`. '
                                     f'For more information, please run `nknet login --help`.')
-        config = yaml.safe_load(config_path.read_text())
+        config = json.loads(config_path.read_text())
         args.username = config['username']
         args.password = config['password']
     requests.get(
@@ -63,7 +62,7 @@ def login(args: argparse.Namespace):
     connectivity_check(success=lambda: print('Login successful'), error=lambda: print('Login failed'))
     if not args.no_save:
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text(yaml.dump({'username': args.username, 'password': args.password}))
+        config_path.write_text(json.dumps({'username': args.username, 'password': args.password}))
 
 
 def logout(_):
@@ -127,7 +126,7 @@ if __name__ == '__main__':
     colorama.init()
     parser = argparse.ArgumentParser(description='a script to login/logout to/from the campus network')
     parser.set_defaults(func=lambda _: parser.print_help())
-    parser.add_argument('-v', '--version', action='version', version='1.2.1')
+    parser.add_argument('-v', '--version', action='version', version='1.2.2')
     subparsers = parser.add_subparsers(dest='command')
 
     login_parser = subparsers.add_parser('login', help='login to the campus network')
