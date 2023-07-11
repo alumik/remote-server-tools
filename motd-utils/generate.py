@@ -106,5 +106,5 @@ def main(config: str = 'server-hub.json'):
 
 
 if __name__ == '__main__':
-    colorama.init()
+    colorama.just_fix_windows_console()
     fire.Fire(main)
