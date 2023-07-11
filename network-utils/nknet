@@ -26,12 +26,11 @@ def connectivity_check(
             error()
 
 
-def get_addr(args: argparse.Namespace) -> str:
+def get_addr() -> str:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("202.113.18.106", 80))
     addr = s.getsockname()[0]
     s.close()
-    args.address = addr
     return addr
 
 
@@ -79,7 +78,7 @@ def status(args: argparse.Namespace):
     def on_success():
         print(f'Status: {colorama.Fore.LIGHTGREEN_EX}online{colorama.Fore.RESET}')
         if args.address is None:
-            args.address = get_addr(args)
+            args.address = get_addr()
         response = requests.get(
             f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadAccount&ip={urllib.parse.quote(args.address)}',
             verify=False,
