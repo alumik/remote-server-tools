@@ -1,12 +1,15 @@
 [Unit]
 Description=NVIDIA GPU Exporter
-After=network.target
+After=network-online.target
 
 [Service]
 User=server-admin
 Group=server-admin
 Type=simple
 ExecStart=/usr/local/bin/nvidia-gpu-exporter
+SyslogIdentifier=nvidia-gpu-exporter
+Restart=always
+RestartSec=1
 
 [Install]
 WantedBy=multi-user.target
