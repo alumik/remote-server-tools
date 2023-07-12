@@ -13,6 +13,8 @@ import subprocess
 from typing import Any
 from logging.handlers import RotatingFileHandler
 
+__version__ = '1.0.1'
+
 
 def get_addr() -> str:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -100,9 +102,9 @@ def clean_gpu_processes(args: argparse.Namespace):
     app_log.addHandler(my_handler)
 
     if args.routine:
-        app_log.info('GPU process checking routinely started.')
+        app_log.info(f'GPU process checking routinely started. (version: {__version__})')
     else:
-        app_log.info('GPU process checking manually started.')
+        app_log.info(f'GPU process checking manually started. (version: {__version__})')
 
     detected_addr = get_addr()
     if args.server is None:
@@ -165,7 +167,7 @@ if __name__ == '__main__':
     colorama.init()
     parser = argparse.ArgumentParser(description='a script to check and clean unregistered GPU processes')
     parser.set_defaults(func=lambda _: parser.print_help())
-    parser.add_argument('-v', '--version', action='version', version='1.0.1')
+    parser.add_argument('-v', '--version', action='version', version=__version__)
     subparsers = parser.add_subparsers(dest='command')
 
     list_parser = subparsers.add_parser('list', help='list GPU processes')
