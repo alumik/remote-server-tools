@@ -13,7 +13,7 @@ import subprocess
 from typing import Any
 from logging.handlers import RotatingFileHandler
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 
 def get_addr() -> str:
