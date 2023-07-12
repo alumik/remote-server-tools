@@ -56,8 +56,16 @@ def get_unregistered_pids(pids: set[int], registered_pids: set[int]) -> set[int]
 
 def list_gpu_processes(args: argparse.Namespace):
     config = load_config(args)
+    detected_addr = get_addr()
     if args.server is None:
-        args.server = get_addr()
+        args.server = detected_addr
+    elif args.server != detected_addr:
+        print(f'WARNING: The detected IP address is {detected_addr}, '
+              f'but you specified {args.server} as the server address.')
+        print('Continue? [y/N]')
+        if input().lower() not in ['y', 'yes']:
+            print('Aborted.')
+            return
 
     pids = get_pids()
     registered_pids = get_registered_pids(config, args.server)
@@ -65,7 +73,7 @@ def list_gpu_processes(args: argparse.Namespace):
 
     if not args.unregistered:
         print('registered GPU processes:')
-        for pid in registered_pids:
+        for pid in registered_pids & pids:
             print(f'  {pid}')
     if not args.registered:
         print('unregistered GPU processes:')
@@ -75,11 +83,8 @@ def list_gpu_processes(args: argparse.Namespace):
 
 def clean_gpu_processes(args: argparse.Namespace):
     config = load_config(args)
-    if args.server is None:
-        args.server = get_addr()
-
     pathlib.Path(config['log']).parent.mkdir(parents=True, exist_ok=True)
-    log_formatter = logging.Formatter('[%(asctime)s] %(message)s')
+    log_formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
     my_handler = RotatingFileHandler(
         config['log'],
         mode='a',
@@ -99,13 +104,32 @@ def clean_gpu_processes(args: argparse.Namespace):
     else:
         app_log.info('GPU process checking manually started.')
 
+    detected_addr = get_addr()
+    if args.server is None:
+        args.server = detected_addr
+    elif args.server != detected_addr:
+        print(f'WARNING: The detected IP address is {detected_addr}, '
+              f'but you specified {args.server} as the server address.')
+        app_log.warning(f'The detected IP address is {detected_addr}, '
+                        f'but you specified {args.server} as the server address.')
+        if args.routine and not args.force:
+            print(f'Cowardly refuse to continue.')
+            app_log.warning(f'Cowardly refuse to continue.')
+            return
+        elif not args.force:
+            print('Continue? [y/N]')
+            if input().lower() not in ['y', 'yes']:
+                print('Aborted.')
+                app_log.warning('Manually aborted.')
+                return
+
     pids = get_pids()
     registered_pids = get_registered_pids(config, args.server)
     unregistered_pids = get_unregistered_pids(pids, registered_pids)
     print('registered GPU processes:')
-    for pid in registered_pids:
+    for pid in registered_pids & pids:
         print(f'  {pid}')
-    app_log.info(f'registered GPU processes: {registered_pids or "{}"}')
+    app_log.info(f'registered GPU processes: {registered_pids & pids or "{}"}')
     print('unregistered GPU processes:')
     for pid in unregistered_pids:
         print(f'  {pid}')
@@ -141,7 +165,7 @@ if __name__ == '__main__':
     colorama.init()
     parser = argparse.ArgumentParser(description='a script to check and clean unregistered GPU processes')
     parser.set_defaults(func=lambda _: parser.print_help())
-    parser.add_argument('-v', '--version', action='version', version='1.0.0')
+    parser.add_argument('-v', '--version', action='version', version='1.0.1')
     subparsers = parser.add_subparsers(dest='command')
 
     list_parser = subparsers.add_parser('list', help='list GPU processes')
@@ -166,6 +190,12 @@ if __name__ == '__main__':
         help='IP address of the server that should only be specified when the automatic address detection fails',
     )
     clean_parser.add_argument('-c', '--config', required=False, type=str, help='path to the config file')
+    clean_parser.add_argument(
+        '-f', '--force',
+        required=False,
+        action='store_true',
+        help='force to clean GPU processes even if the server address is different from the detected one',
+    )
     clean_parser.add_argument('--routine', required=False, action='store_true', help='run in routine mode')
     clean_parser.set_defaults(func=clean_gpu_processes)
 
