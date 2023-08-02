@@ -2,7 +2,7 @@
 
 ![version-1.2.1](https://img.shields.io/badge/version-1.2.1-blue)
 ![python->=3.10](https://img.shields.io/badge/python->=3.10-blue?logo=python&logoColor=white)
-[![license-MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/alumik/remote-server-tools/blob/main/LICENSE)
+![license-MIT](https://img.shields.io/badge/license-MIT-green)
 
 This is a collection of tools for managing remote servers.
 
