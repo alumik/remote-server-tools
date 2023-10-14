@@ -36,7 +36,6 @@ def get_addr() -> str:
 
 
 def login(args: argparse.Namespace):
-    print('Logging in...')
     if bool(args.username) != bool(args.password):
         raise ValueError('Username and password must be both specified or both omitted.')
     if args.config is not None:
@@ -51,6 +50,7 @@ def login(args: argparse.Namespace):
             config = json.loads(config_path.read_text())
             args.username = config['username']
             args.password = config['password']
+    print('Logging in...')
     requests.get(
         f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&DDDDD={urllib.parse.quote(args.username)}'
         f'&upass={urllib.parse.quote(args.password)}',
@@ -74,6 +74,8 @@ def logout(_):
 
 
 def status(args: argparse.Namespace):
+    print('Detecting network status...')
+
     def on_success():
         print(f'Status: {colorama.Fore.LIGHTGREEN_EX}online{colorama.Fore.RESET}')
         if args.address is None:
@@ -125,7 +127,7 @@ if __name__ == '__main__':
     requests.packages.urllib3.util.connection.HAS_IPV6 = False
     parser = argparse.ArgumentParser(description='a script to login/logout to/from the campus network')
     parser.set_defaults(func=lambda _: parser.print_help())
-    parser.add_argument('-v', '--version', action='version', version='1.3.0')
+    parser.add_argument('-v', '--version', action='version', version='1.3.1')
     subparsers = parser.add_subparsers(dest='command')
 
     login_parser = subparsers.add_parser('login', help='login to the campus network')
