@@ -123,9 +123,10 @@ def status(args: argparse.Namespace):
 
 if __name__ == '__main__':
     colorama.init()
+    requests.packages.urllib3.util.connection.HAS_IPV6 = False
     parser = argparse.ArgumentParser(description='a script to login/logout to/from the campus network')
     parser.set_defaults(func=lambda _: parser.print_help())
-    parser.add_argument('-v', '--version', action='version', version='1.2.2')
+    parser.add_argument('-v', '--version', action='version', version='1.2.3')
     subparsers = parser.add_subparsers(dest='command')
 
     login_parser = subparsers.add_parser('login', help='login to the campus network')
