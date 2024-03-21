@@ -1,6 +1,6 @@
 # Remote Server Tools
 
-![version-1.2.4](https://img.shields.io/badge/version-1.2.4-blue)
+![version-1.2.5](https://img.shields.io/badge/version-1.2.5-blue)
 ![python->=3.10](https://img.shields.io/badge/python->=3.10-blue?logo=python&logoColor=white)
 ![license-MIT](https://img.shields.io/badge/license-MIT-green)
 
