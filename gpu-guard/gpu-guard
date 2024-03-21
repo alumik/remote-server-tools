@@ -13,21 +13,21 @@ import subprocess
 from typing import Any
 from logging.handlers import RotatingFileHandler
 
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 
 def get_addr() -> str:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("202.113.18.106", 80))
+    s.connect(('202.113.18.106', 80))
     addr = s.getsockname()[0]
     s.close()
     print(f'detected IP address: {addr}')
     return addr
 
 
-def load_config(args: argparse.Namespace) -> dict[str, Any]:
-    if args.config is not None:
-        config_path = pathlib.Path(args.config)
+def load_config(args_: argparse.Namespace) -> dict[str, Any]:
+    if args_.config is not None:
+        config_path = pathlib.Path(args_.config)
     else:
         config_path = pathlib.Path(__file__).resolve().parent / 'config.json'
     if not config_path.exists():
@@ -56,35 +56,35 @@ def get_unregistered_pids(pids: set[int], registered_pids: set[int]) -> set[int]
     return pids - registered_pids
 
 
-def list_gpu_processes(args: argparse.Namespace):
-    config = load_config(args)
+def list_gpu_processes(args_: argparse.Namespace):
+    config = load_config(args_)
     detected_addr = get_addr()
-    if args.server is None:
-        args.server = detected_addr
-    elif args.server != detected_addr:
+    if args_.server is None:
+        args_.server = detected_addr
+    elif args_.server != detected_addr:
         print(f'WARNING: The detected IP address is {detected_addr}, '
-              f'but you specified {args.server} as the server address.')
+              f'but you specified {args_.server} as the server address.')
         print('Continue? [y/N]')
         if input().lower() not in ['y', 'yes']:
             print('Aborted.')
             return
 
     pids = get_pids()
-    registered_pids = get_registered_pids(config, args.server)
+    registered_pids = get_registered_pids(config, args_.server)
     unregistered_pids = get_unregistered_pids(pids, registered_pids)
 
-    if not args.unregistered:
+    if not args_.unregistered:
         print('registered GPU processes:')
         for pid in registered_pids & pids:
             print(f'  {pid}')
-    if not args.registered:
+    if not args_.registered:
         print('unregistered GPU processes:')
         for pid in unregistered_pids:
             print(f'  {pid}')
 
 
-def clean_gpu_processes(args: argparse.Namespace):
-    config = load_config(args)
+def clean_gpu_processes(args_: argparse.Namespace):
+    config = load_config(args_)
     pathlib.Path(config['log']).parent.mkdir(parents=True, exist_ok=True)
     log_formatter = logging.Formatter('[%(asctime)s] %(levelname)s: %(message)s')
     my_handler = RotatingFileHandler(
@@ -101,24 +101,24 @@ def clean_gpu_processes(args: argparse.Namespace):
     app_log.setLevel(logging.INFO)
     app_log.addHandler(my_handler)
 
-    if args.routine:
+    if args_.routine:
         app_log.info(f'GPU process checking routinely started. (version: {__version__})')
     else:
         app_log.info(f'GPU process checking manually started. (version: {__version__})')
 
     detected_addr = get_addr()
-    if args.server is None:
-        args.server = detected_addr
-    elif args.server != detected_addr:
+    if args_.server is None:
+        args_.server = detected_addr
+    elif args_.server != detected_addr:
         print(f'WARNING: The detected IP address is {detected_addr}, '
-              f'but you specified {args.server} as the server address.')
+              f'but you specified {args_.server} as the server address.')
         app_log.warning(f'The detected IP address is {detected_addr}, '
-                        f'but you specified {args.server} as the server address.')
-        if args.routine and not args.force:
+                        f'but you specified {args_.server} as the server address.')
+        if args_.routine and not args_.force:
             print(f'Cowardly refuse to continue.')
             app_log.warning(f'Cowardly refuse to continue.')
             return
-        elif not args.force:
+        elif not args_.force:
             print('Continue? [y/N]')
             if input().lower() not in ['y', 'yes']:
                 print('Aborted.')
@@ -126,7 +126,7 @@ def clean_gpu_processes(args: argparse.Namespace):
                 return
 
     pids = get_pids()
-    registered_pids = get_registered_pids(config, args.server)
+    registered_pids = get_registered_pids(config, args_.server)
     unregistered_pids = get_unregistered_pids(pids, registered_pids)
     print('registered GPU processes:')
     for pid in registered_pids & pids:
@@ -149,7 +149,7 @@ def clean_gpu_processes(args: argparse.Namespace):
             if user not in config['whitelist']['users']:
                 requests.post(
                     config['urls']['register_kill'],
-                    json={'server': args.server, 'pid': _pid, 'user': user, 'command': command},
+                    json={'server': args_.server, 'pid': _pid, 'user': user, 'command': command},
                     timeout=5,
                 )
                 subprocess.run(['kill', str(pid)])
