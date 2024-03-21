@@ -1,3 +1,5 @@
 #!/bin/bash
 
-lastlog -b 360 -u 1000-
+DAYS=${1:-360}
+
+lastlog -b "$DAYS" -u 1000-
