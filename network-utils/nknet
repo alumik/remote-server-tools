@@ -12,7 +12,7 @@ import urllib.parse
 
 from typing import Callable
 
-__version__ = '1.3.2'
+__version__ = '1.3.3'
 
 
 def connectivity_check(success: Callable, error: Callable, timeout: int = 1):
@@ -89,8 +89,8 @@ def login(args_: argparse.Namespace):
         config_path = pathlib.Path.home() / '.config' / 'nknet' / 'config.json'
     if args_.username is None:
         if not config_path.exists():
-            args_.username = input('Username: ')
-            args_.password = getpass.getpass('Password: ')
+            args_.username = input('username: ')
+            args_.password = getpass.getpass('password: ')
         else:
             config = json.loads(config_path.read_text())
             args_.username = config['username']
@@ -134,18 +134,20 @@ def status(args_: argparse.Namespace):
 if __name__ == '__main__':
     colorama.init()
     requests.packages.urllib3.util.connection.HAS_IPV6 = False
-    parser = argparse.ArgumentParser(description='a script to login/logout to/from the campus network')
+    parser = argparse.ArgumentParser(
+        description='manage login/logout and check the status of the campus network',
+    )
     parser.set_defaults(func=lambda _: parser.print_help())
     parser.add_argument('-v', '--version', action='version', version=__version__)
-    subparsers = parser.add_subparsers(dest='command')
+    subparsers = parser.add_subparsers(dest='command', title='commands')
 
     login_parser = subparsers.add_parser('login', help='login to the campus network')
     login_parser.add_argument('-u', '--username', required=False, type=str,
-                              help='username of your campus network account')
+                              help='your campus network account username')
     login_parser.add_argument('-p', '--password', required=False, type=str,
-                              help='password of your campus network account')
+                              help='your campus network account password')
     login_parser.add_argument('-c', '--config', required=False, type=str,
-                              help='path to the config file')
+                              help='path to the config file containing login details')
     login_parser.add_argument('-n', '--no-save', required=False, action='store_true',
                               help='do not save the username and password to the config file')
     login_parser.set_defaults(func=login)
@@ -158,7 +160,7 @@ if __name__ == '__main__':
         '-a', '--address',
         required=False,
         type=str,
-        help='IP address of the device that should only be specified when the automatic address detection fails',
+        help='specify the IP address of the device if automatic address detection fails'
     )
     status_parser.set_defaults(func=status)
 
