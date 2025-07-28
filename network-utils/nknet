@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
+import re
 import json
 import time
-import socket
 import getpass
 import pathlib
+import urllib3
 import argparse
 import colorama
 import requests
@@ -12,128 +13,139 @@ import urllib.parse
 
 from typing import Callable
 
-__version__ = '1.3.3'
+__version__ = '2.0.1'
+
+BASE_URL = 'netauth.nankai.edu.cn'
+BASE_PORT = 804
+ROOT = f'https://{BASE_URL}:{BASE_PORT}/eportal/portal/'
+TIMEOUT = 3
 
 
-def connectivity_check(success: Callable, error: Callable, timeout: int = 1):
+def connectivity_check(
+        success: Callable,
+        error: Callable,
+        timeout: int = TIMEOUT,
+        msg: str | None = None,
+):
     try:
         requests.head('https://www.baidu.com/', timeout=timeout)
         if success is not None:
-            success()
+            success(msg)
     except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
         if error is not None:
-            error()
+            error(msg)
 
 
-def get_addr() -> str:
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(('202.113.18.106', 80))
-    addr = s.getsockname()[0]
-    s.close()
-    return addr
+def compute_key(key: str) -> int:
+    computed_key = 0
+    for char in key:
+        computed_key ^= ord(char)
+    return computed_key
 
 
-def print_status(args_: argparse.Namespace):
-    if 'address' not in args_ or args_.address is None:
-        args_.address = get_addr()
-    response = requests.get(
-        f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadAccount&ip={urllib.parse.quote(args_.address)}',
-        verify=False,
-    )
-    response.encoding = response.apparent_encoding
-    response = json.loads(response.text[1:-1])
-    if response['list'] is None:
-        print(f'Invalid address: {args_.address}')
-        return
-    username = response['list'][0]['account']
-    response = requests.get(
-        f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadUserFlow&account={urllib.parse.quote(username)}',
-        verify=False,
-    )
-    response.encoding = response.apparent_encoding
+def encode_string(string: str, key: str = 'drcom') -> str:
+    if not string:
+        return ''
+    if len(string) > 512:
+        return '-1'
+    output = ''
+    computed_key = compute_key(key)
+    for char in string:
+        ch = ord(char) ^ computed_key
+        str_hex = format(ch, '02x')
+        output += str_hex
+    return output
+
+
+def decode_string(encoded: str, key: str = 'drcom'):
+    if not encoded:
+        return ''
+    if len(encoded) % 2 != 0:
+        raise ValueError('Encoded string must have an even length.')
+    decoded = ''
+    computed_key = compute_key(key)
+    for i in range(0, len(encoded), 2):
+        hex_pair = encoded[i:i + 2]
+        ch = int(hex_pair, 16)
+        original_ch = ch ^ computed_key
+        decoded += chr(original_ch)
+    return decoded
+
+
+def print_status():
+    response = requests.get(f'https://{BASE_URL}', verify=False)
     try:
-        name = json.loads(response.text[1:-1])['list'][0]['name']
-    except json.decoder.JSONDecodeError:
-        print(f'Invalid address: {args_.address}')
-        return
-    response = requests.get(
-        f'http://202.113.18.106:801/eportal/?c=GetUserMsg&a=loadOnlineDevice'
-        f'&account={urllib.parse.quote(username)}',
-        verify=False,
-    )
-    response.encoding = response.apparent_encoding
-    devices = json.loads(response.text[1:-1])['list']
-    login_time = 'N/A'
-    for device in devices:
-        if device['login_ip'] == args_.address:
-            login_time = device['login_time']
-            break
+        username = re.findall(r'uid=\'(.*?)\'', response.text)[0]
+    except IndexError:
+        username = 'N/A'
     print(f'Login account: {username}')
-    print(f'Name: {name}')
-    print(f'Login time: {login_time}')
 
 
 def login(args_: argparse.Namespace):
-    def on_success():
+    def on_success(_):
         print('Login successful')
-        print_status(args_)
+        print_status()
 
-    def on_error():
-        print('Login failed')
+    def on_error(msg: str):
+        print(f'Login failed: {msg}')
 
-    if bool(args_.username) != bool(args_.password):
-        raise ValueError('Username and password must be both specified or both omitted.')
     if args_.config is not None:
         config_path = pathlib.Path(args_.config)
     else:
         config_path = pathlib.Path.home() / '.config' / 'nknet' / 'config.json'
-    if args_.username is None:
-        if not config_path.exists():
-            args_.username = input('username: ')
-            args_.password = getpass.getpass('password: ')
-        else:
-            config = json.loads(config_path.read_text())
-            args_.username = config['username']
-            args_.password = config['password']
+    if config_path.exists() and args_.auto_login:
+        config = json.loads(config_path.read_text())
+        username = config['username']
+        password = config['password']
+    else:
+        username = input('username: ')
+        password = getpass.getpass('password: ')
     print('Logging in...')
-    requests.get(
-        f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Login&DDDDD={urllib.parse.quote(args_.username)}'
-        f'&upass={urllib.parse.quote(args_.password)}',
+    response = requests.get(
+        urllib.parse.urljoin(ROOT, 'login'),
+        params={
+            'callback': encode_string('dr1001'),
+            'user_account': encode_string(f',`,{username}'),
+            'user_password': encode_string(password),
+        },
         verify=False,
     )
     time.sleep(3)
-    connectivity_check(success=on_success, error=on_error)
+    connectivity_check(success=on_success, error=on_error, msg=response.text)
     if not args_.no_save:
         config_path.parent.mkdir(parents=True, exist_ok=True)
-        config_path.write_text(json.dumps({'username': args_.username, 'password': args_.password}))
+        config_path.write_text(json.dumps({'username': username, 'password': password}))
 
 
 def logout(_):
+    def on_success(_):
+        print('Logout successful')
+
+    def on_error(msg: str):
+        print(f'Logout failed: {msg}')
+
     print('Logging out...')
-    requests.get(
-        f'http://202.113.18.106:801/eportal/?c=ACSetting&a=Logout',
-        verify=False,
-    )
+    response = requests.get(urllib.parse.urljoin(ROOT, 'logout'), verify=False)
     time.sleep(3)
-    connectivity_check(success=lambda: print('Logout failed'), error=lambda: print('Logout successful'))
+    connectivity_check(success=on_error, error=on_success, msg=response.text)
 
 
 def status(args_: argparse.Namespace):
-    print('Detecting network status...')
-
-    def on_success():
+    def on_success(_):
         print(f'Status: {colorama.Fore.LIGHTGREEN_EX}online{colorama.Fore.RESET}')
-        print_status(args_)
+        print_status()
 
-    def on_error():
+    def on_error(_):
         print(f'Status: {colorama.Fore.LIGHTRED_EX}offline{colorama.Fore.RESET}')
 
+    print('Detecting network status...')
     connectivity_check(success=on_success, error=on_error)
 
 
 if __name__ == '__main__':
     colorama.init()
-    requests.packages.urllib3.util.connection.HAS_IPV6 = False
+    urllib3.util.connection.HAS_IPV6 = False
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     parser = argparse.ArgumentParser(
         description='manage login/logout and check the status of the campus network',
     )
@@ -142,12 +154,10 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(dest='command', title='commands')
 
     login_parser = subparsers.add_parser('login', help='login to the campus network')
-    login_parser.add_argument('-u', '--username', required=False, type=str,
-                              help='your campus network account username')
-    login_parser.add_argument('-p', '--password', required=False, type=str,
-                              help='your campus network account password')
     login_parser.add_argument('-c', '--config', required=False, type=str,
                               help='path to the config file containing login details')
+    login_parser.add_argument('-a', '--auto-login', required=False, action='store_true',
+                              help='automatically login using the credentials from the config file (if available)')
     login_parser.add_argument('-n', '--no-save', required=False, action='store_true',
                               help='do not save the username and password to the config file')
     login_parser.set_defaults(func=login)
@@ -156,12 +166,6 @@ if __name__ == '__main__':
     logout_parser.set_defaults(func=logout)
 
     status_parser = subparsers.add_parser('status', help='check the status of the campus network')
-    status_parser.add_argument(
-        '-a', '--address',
-        required=False,
-        type=str,
-        help='specify the IP address of the device if automatic address detection fails'
-    )
     status_parser.set_defaults(func=status)
 
     args = parser.parse_args()
