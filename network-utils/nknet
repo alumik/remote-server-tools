@@ -13,7 +13,7 @@ import urllib.parse
 
 from typing import Callable
 
-__version__ = '2.0.1'
+__version__ = '2.0.2'
 
 BASE_URL = 'netauth.nankai.edu.cn'
 BASE_PORT = 804
@@ -30,10 +30,10 @@ def connectivity_check(
     try:
         requests.head('https://www.baidu.com/', timeout=timeout)
         if success is not None:
-            success(msg)
+            return success(msg)
     except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
         if error is not None:
-            error(msg)
+            return error(msg)
 
 
 def compute_key(key: str) -> int:
@@ -73,7 +73,7 @@ def decode_string(encoded: str, key: str = 'drcom'):
 
 
 def print_status():
-    response = requests.get(f'https://{BASE_URL}', verify=False)
+    response = requests.get(f'https://{BASE_URL}')
     try:
         username = re.findall(r'uid=\'(.*?)\'', response.text)[0]
     except IndexError:
@@ -88,6 +88,12 @@ def login(args_: argparse.Namespace):
 
     def on_error(msg: str):
         print(f'Login failed: {msg}')
+
+    if connectivity_check(success=lambda _: True, error=lambda _: False):
+        print('The campus network is already authenticated.')
+        if input('Do you want to login again? [y/n]? ').lower() != 'y':
+            print('Exiting...')
+            return
 
     if args_.config is not None:
         config_path = pathlib.Path(args_.config)
@@ -108,7 +114,6 @@ def login(args_: argparse.Namespace):
             'user_account': encode_string(f',`,{username}'),
             'user_password': encode_string(password),
         },
-        verify=False,
     )
     time.sleep(3)
     connectivity_check(success=on_success, error=on_error, msg=response.text)
@@ -125,7 +130,7 @@ def logout(_):
         print(f'Logout failed: {msg}')
 
     print('Logging out...')
-    response = requests.get(urllib.parse.urljoin(ROOT, 'logout'), verify=False)
+    response = requests.get(urllib.parse.urljoin(ROOT, 'logout'))
     time.sleep(3)
     connectivity_check(success=on_error, error=on_success, msg=response.text)
 
