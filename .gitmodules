@@ -1,0 +1,3 @@
+[submodule "network-utils/nknet"]
+	path = network-utils/nknet
+	url = https://github.com/alumik/nknet.git
